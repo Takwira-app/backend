@@ -144,11 +144,27 @@ export class MatchesService {
 
     if (!teamPlayer) throw new NotFoundException('Not in match');
 
-    /*await this.notificationService.createNotification(
-        matches.creator_id,
+    const user = await this.prisma.users.findUnique({
+        where: { user_id: userId },
+      });
+
+      if(!user){
+        throw new NotFoundException('User not found');
+      }
+
+    const match = await this.prisma.matches.findUnique({
+        where: { match_id },
+      });  
+
+    if(!match){
+        throw new NotFoundException('Match not found');
+    }  
+
+    await this.notificationService.createNotification(
+        match.creator_id,
         `${user.name} left your match`,
         "A player has left the match."
-      );*/
+      );
 
     return this.prisma.team_players.delete({
       where: { match_team_id_player_id: {
@@ -184,18 +200,34 @@ export class MatchesService {
     });
 
     // Notifier le créateur
-    /*await this.notificationService.createNotification(
+    await this.notificationService.createNotification(
       match.creator_id,
       'Match Approved! ',
       `Your match at ${match.stadiums.name} on ${match.match_date} has been approved!`,
-      'match_approved',matchId
-    );*/
+    );
 
     return match;
 
   }
 
   async rejectRequest(match_id: number, dto: UpdateMatchTeamDto, userId: number) {
+    const match = await this.prisma.matches.update({
+      where: { match_id: match_id },
+      data: { status: 'rejected' },
+      include: {
+        users: true, 
+        stadiums: true
+      }
+    });
+
+    // Notifier le créateur
+    await this.notificationService.createNotification(
+      match.creator_id,
+      'Match Rejected! ',
+      `Your match at ${match.stadiums.name} on ${match.match_date} has been rejected!`,
+    );
+
+    return match;
    
   }
 
