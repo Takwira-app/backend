@@ -3,10 +3,14 @@ import { PrismaService} from '../../prisma/prisma.service';
 import { CreateMatchTeamDto } from './dto/create-match_team.dto';
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UpdateMatchTeamDto } from './dto/update-match_team.dto';
+import { NotificationsService } from 'src/notifications/notifications.service';
+
 
 @Injectable()
 export class MatchTeamsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async createTeam(match_id:number,dto: CreateMatchTeamDto) {
     const match = await this.prisma.matches.findUnique({ where: { match_id } });
@@ -42,6 +46,7 @@ export class MatchTeamsService {
       });
   
       if (!team) throw new NotFoundException('Team not found');
+      
       const alreadyJoined = await this.prisma.team_players.findUnique({
         where: {
           match_team_id_player_id: {
@@ -91,6 +96,21 @@ export class MatchTeamsService {
       if (alreadyJoined) {
         throw new ForbiddenException('Player already in this team');
       }
+      const match = await this.prisma.matches.findUnique({
+        where: { match_id: team .match_id },
+      });
+      const user = await this.prisma.users.findUnique({
+        where: { user_id: player_id },
+      });
+
+      if(!user){
+        throw new NotFoundException('User not found');
+      }
+
+      await this.notificationsService.createNotification(team.matches.creator_id,
+      'New Player Joined',`${user.name} joined your match`
+    );
+
 
       return this.prisma.team_players.create({
         data: {
@@ -166,6 +186,29 @@ export class MatchTeamsService {
     if (!membership)
       throw new NotFoundException('Player is not in this team');
 
+    const team = await this.prisma.match_teams.findUnique({
+      where: { match_team_id: team_id },
+      include: { matches: true },
+    });
+
+    if(!team) throw new NotFoundException('Team not found');
+
+    const match = team.matches;
+
+    const user = await this.prisma.users.findUnique({
+      where: { user_id: player_id },
+    });
+
+    if(!user){
+      throw new NotFoundException('User not found');
+    }
+
+    await this.notificationsService.createNotification(
+      match.creator_id,
+      `${user.name} left your team`,
+      "A player has left the team."
+    );
+
     return this.prisma.team_players.delete({
       where: {
         match_team_id_player_id: {
@@ -174,6 +217,8 @@ export class MatchTeamsService {
         },
       },
     });
+    
+
   }
 
   // Players

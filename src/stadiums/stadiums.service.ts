@@ -10,6 +10,10 @@ export class StadiumsService {
   constructor(private prisma: PrismaService) {}
 
 
+
+  async addPhoto(){
+
+  }
   async create(dto: CreateStadiumDto,ownerId:number) {
     return this.prisma.stadiums.create({
       data:{
@@ -100,4 +104,6 @@ export class StadiumsService {
       where: { stadium_id: id },
     });
   }
+
+  
 }

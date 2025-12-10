@@ -64,4 +64,12 @@ export class StadiumsController {
   remove(@Param('id',ParseIntPipe) id: number,@Req() req) {
     return this.stadiumsService.remove(id,req.user.id);
   }
+
+  // ajout photos
+  @Post(':id/photos')
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles('owner')
+  addPhoto(@Param('id',ParseIntPipe) id: number,@Body('photoUrl') photoUrl: string,@Req() req) {
+    //return this.stadiumsService.addPhoto(id, photoUrl, req.user.id);
+  }
 }

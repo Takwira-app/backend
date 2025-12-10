@@ -6,21 +6,24 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { match_status } from 'generated/prisma/enums';
 import { UpdateMatchTeamDto } from 'src/match_teams/dto/update-match_team.dto';
-
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { matches } from 'class-validator';
 
 @Injectable()
 export class MatchesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+  private notificationService: NotificationsService
+  ) {}
 
   async create(dto: CreateMatchDto, userId: number) {
     const matchDate = new Date(dto.match_date);
-    const startTime = new Date(`1970-01-01T${dto.start_time}`);
+    const startTime = new Date(dto.start_time);
     return this.prisma.matches.create({
       data: {
         ...dto,
         creator_id: userId,
         status: 'pending',
-        match_date: matchDate,     // ÉCRASER la valeur string par l'objet Date
+        match_date: matchDate,     
         start_time: startTime,
       },
     });
@@ -141,12 +144,59 @@ export class MatchesService {
 
     if (!teamPlayer) throw new NotFoundException('Not in match');
 
+    /*await this.notificationService.createNotification(
+        matches.creator_id,
+        `${user.name} left your match`,
+        "A player has left the match."
+      );*/
+
     return this.prisma.team_players.delete({
       where: { match_team_id_player_id: {
           match_team_id: teamPlayer.match_team_id,
           player_id: userId,
         }, },
     });
+    
+
+  }
+
+  async getPendingRequests(userId: number) {
+    return this.prisma.match_teams.findMany({
+      where: {
+        matches: { creator_id: userId, status: match_status.pending },
+      },
+      include: {
+        matches: true,
+        team_players: { include: { users: true } },
+      },
+    });
+  }
+
+  async approveRequest(matchId: number, dto: UpdateMatchTeamDto, userId: number) {
+
+    const match = await this.prisma.matches.update({
+      where: { match_id: matchId },
+      data: { status: 'approved' },
+      include: {
+        users: true, // Créateur du match
+        stadiums: true
+      }
+    });
+
+    // Notifier le créateur
+    /*await this.notificationService.createNotification(
+      match.creator_id,
+      'Match Approved! ',
+      `Your match at ${match.stadiums.name} on ${match.match_date} has been approved!`,
+      'match_approved',matchId
+    );*/
+
+    return match;
+
+  }
+
+  async rejectRequest(match_id: number, dto: UpdateMatchTeamDto, userId: number) {
+   
   }
 
 
