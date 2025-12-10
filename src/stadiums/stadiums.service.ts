@@ -11,9 +11,29 @@ export class StadiumsService {
 
 
 
-  async addPhoto(){
+  async addPhoto(stadiumId: number, photoUrl: string, ownerId: number) {
+    const stadium = await this.prisma.stadiums.findUnique({
+      where: { stadium_id: stadiumId },
+    });
 
+    if (!stadium) {
+      throw new NotFoundException("Stadium not found");
+    }
+
+    if (stadium.owner_id !== ownerId) {
+      throw new ForbiddenException("You are not the owner of this stadium");
+    }
+
+    return this.prisma.stadiums.update({
+      where: { stadium_id: stadiumId },
+      data: {
+        photos: {
+          push: photoUrl,
+        },
+      },
+    });
   }
+
   async create(dto: CreateStadiumDto,ownerId:number) {
     return this.prisma.stadiums.create({
       data:{
