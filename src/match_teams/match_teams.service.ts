@@ -55,7 +55,6 @@ export class MatchTeamsService {
           },
         },
       });
-          // 2. Vérifier si le joueur est dans une AUTRE équipe du même match
       const otherTeamsInSameMatch = await this.prisma.match_teams.findMany({
         where: {
           match_id: team.match_id, // Toutes les équipes du même match
